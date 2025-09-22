@@ -1,0 +1,14 @@
+Flask
+Flask-SQLAlchemy
+psycopg2-binary
+Flask-Cors
+Flask-Bcrypt
+PyJWT
+python-dotenv
+requests
+razorpay
+gunicorn
+openai
+SpeechRecognition
+Flask-Mail
+itsdangerous
