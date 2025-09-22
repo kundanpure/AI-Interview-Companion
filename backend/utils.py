@@ -4,32 +4,22 @@ from flask_mail import Message
 from .app import mail
 
 def generate_verification_token(email):
-    """Generates a secure, timed token for email verification."""
     serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
     return serializer.dumps(email, salt='email-verification-salt')
 
-def confirm_verification_token(token, expiration=3600):
-    """Confirms the verification token. Returns the email if valid, otherwise None."""
+def confirm_verification_token(token, expiration=86400):  # 24h
     serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
     try:
-        email = serializer.loads(
-            token,
-            salt='email-verification-salt',
-            max_age=expiration  # Token is valid for 1 hour
-        )
+        email = serializer.loads(token, salt='email-verification-salt', max_age=expiration)
         return email
     except Exception:
         return None
 
 def send_verification_email(user_email):
-    """Sends the verification email to the new user."""
     token = generate_verification_token(user_email)
-    
-    # IMPORTANT: In production, change 'http://localhost:3000' to your frontend's domain
-    # e.g., f"https://your-app-name.netlify.app/verify-email/{token}"
-    verify_url = f"http://localhost:3000/verify-email/{token}"
-    
-    # Simple HTML content for the email
+    frontend = current_app.config.get('FRONTEND_BASE_URL', 'http://localhost:3000')
+    verify_url = f"{frontend}/verify-email/{token}"
+
     html_body = f"""
     <div style="font-family: sans-serif; text-align: center; padding: 20px;">
         <h2>Welcome to AI Interview Coach!</h2>
@@ -42,20 +32,14 @@ def send_verification_email(user_email):
         </p>
     </div>
     """
-    
-    msg = Message(
-        subject="Confirm Your Email - AI Interview Coach",
-        recipients=[user_email],
-        html=html_body
-    )
-    
+
+    msg = Message(subject="Confirm Your Email - AI Interview Coach", recipients=[user_email], html=html_body)
     mail.send(msg)
 
-# THIS IS THE CORRECTED CODE
 def send_password_reset_email(user_email, reset_token):
-    """Sends the password reset email to the user."""
-    reset_url = f"http://localhost:3000/reset-password/{reset_token}"
-    
+    frontend = current_app.config.get('FRONTEND_BASE_URL', 'http://localhost:3000')
+    reset_url = f"{frontend}/reset-password/{reset_token}"
+
     html_body = f"""
     <div style="font-family: sans-serif; text-align: center; padding: 20px;">
         <h2>AI Interview Coach Password Reset</h2>
@@ -68,12 +52,5 @@ def send_password_reset_email(user_email, reset_token):
         </p>
     </div>
     """
-    
-    # Corrected logic starts here
-    msg = Message(
-        subject="Reset Your Password - AI Interview Coach",
-        recipients=[user_email],
-        html=html_body
-    )
-    
+    msg = Message(subject="Reset Your Password - AI Interview Coach", recipients=[user_email], html=html_body)
     mail.send(msg)
