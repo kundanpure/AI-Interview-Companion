@@ -1,73 +1,66 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { UserPlus, Mail, Lock } from 'lucide-react';
 import api from '../api';
+import { Page, Container } from '../components/Page';
+import GlassCard from '../components/GlassCard';
+import { EmeraldButton } from '../components/Buttons';
+import { Field, TextInput } from '../components/Fields';
 
-function SignupPage() {
+export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long.');
-      return;
-    }
+    setError(''); setSuccess('');
+    if (password.length < 6) return setError('Password must be at least 6 characters long.');
+    setIsSubmitting(true);
     try {
-      const response = await api.post('/auth/register', { email, password });
-      // Update the success message to what the backend sends
-      setSuccess(response.data.message || 'Registration successful! Please check your email to verify.');
-      // We no longer redirect to login automatically
+      const res = await api.post('/auth/register', { email, password });
+      setSuccess(res.data.message || 'Registration successful! Check your email to verify.');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to register.');
+    } finally {
+      setIsSubmitting(false);
     }
-  };
-  
-  const styles = {
-    container: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#1a202c', color: 'white', fontFamily: 'sans-serif' },
-    form: { display: 'flex', flexDirection: 'column', gap: '1rem', width: '300px', padding: '2rem', backgroundColor: '#2d3748', borderRadius: '8px' },
-    input: { padding: '0.5rem', borderRadius: '4px', border: 'none', backgroundColor: '#4a5568', color: 'white' },
-    button: { padding: '0.75rem', borderRadius: '4px', border: 'none', backgroundColor: '#3182ce', color: 'white', cursor: 'pointer', fontWeight: 'bold' },
-    error: { color: '#e53e3e', marginTop: '1rem', textAlign: 'center' },
-    success: { color: '#38a169', marginTop: '1rem', textAlign: 'center' },
-    linkContainer: { marginTop: '1rem' },
-    link: { color: '#63b3ed' }
   };
 
   return (
-    <div style={styles.container}>
-      <h2>Sign Up</h2>
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email"
-          required
-          style={styles.input}
-        />
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password"
-          required
-          style={styles.input}
-        />
-        <button type="submit" style={styles.button}>Sign Up</button>
-      </form>
-      {error && <p style={styles.error}>{error}</p>}
-      {success && <p style={styles.success}>{success}</p>}
-      <div style={styles.linkContainer}>
-        <span>Already have an account? </span>
-        <Link to="/login" style={styles.link}>Log In</Link>
-      </div>
-    </div>
+    <Page>
+      <Container className="flex items-center justify-center">
+        <GlassCard className="w-full max-w-md p-6">
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-cyan-500">
+              <UserPlus />
+            </div>
+            <h2 className="text-2xl font-bold mt-3">Create Account</h2>
+            <p className="text-white/60 text-sm mt-1">Get started with AI-powered interview practice.</p>
+          </div>
+
+          <form onSubmit={submit} className="space-y-4">
+            <Field label="Email" icon={<Mail className="w-4 h-4 text-white/70" />}>
+              <TextInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
+            </Field>
+            <Field label="Password" icon={<Lock className="w-4 h-4 text-white/70" />}>
+              <TextInput type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+            </Field>
+            <EmeraldButton type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting ? 'Creating…' : 'Sign Up'}
+            </EmeraldButton>
+            {error && <div className="text-rose-300 text-sm">{error}</div>}
+            {success && <div className="text-emerald-300 text-sm">{success}</div>}
+          </form>
+
+          <div className="text-center text-sm text-white/70 mt-5">
+            Already have an account?{' '}
+            <Link to="/login" className="text-sky-300 hover:underline">Log In</Link>
+          </div>
+        </GlassCard>
+      </Container>
+    </Page>
   );
 }
-
-export default SignupPage;

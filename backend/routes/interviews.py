@@ -1,3 +1,4 @@
+# backend/routes/interviews.py
 from flask import Blueprint, request, jsonify, current_app
 from ..app import db
 from ..models import User, Interview, InterviewTurn
@@ -44,7 +45,12 @@ def prepare_interview(current_user):
         return jsonify({'error': 'Provide jd_text or jd_url'}), 400
 
     try:
-        rubric, first_questions = services.build_rubric_and_questions(current_user, jd_text=jd_text, jd_url=jd_url, role=role)
+        rubric, first_questions = services.build_rubric_and_questions(
+            current_user,
+            jd_text=jd_text,
+            jd_url=jd_url,
+            role=role
+        )
         return jsonify({'rubric': rubric, 'suggested_questions': first_questions}), 200
     except Exception as e:
         current_app.logger.exception("prepare_interview failed")
@@ -58,7 +64,11 @@ def start_interview(current_user):
     if not session_id:
         return jsonify({'error': 'Session ID is required.'}), 400
 
-    interview = Interview.query.get(uuid.UUID(session_id))
+    try:
+        interview = Interview.query.get(uuid.UUID(session_id))
+    except Exception:
+        interview = None
+
     if not interview or interview.user_id != current_user.id:
         return jsonify({'error': 'Interview session not found or unauthorized.'}), 404
 
@@ -75,8 +85,9 @@ def start_interview(current_user):
             return jsonify({'error': 'No interview credits remaining. Please purchase more.'}), 402
 
     personality_key = data.get('interviewer_personality')
-    interview.interviewer_personality = {'key': personality_key}
-    interview.user_data = data.get('user_data')
+    interview.interviewer_personality = {'key': personality_key} if personality_key else {'key': 'sarah'}
+    # always ensure it's a dict
+    interview.user_data = data.get('user_data') or {}
     interview.status = 'started'
 
     first_question, topic = services.get_next_turn(interview)
@@ -105,7 +116,11 @@ def submit_answer(current_user):
     answer_text = data.get('answer')
     audio_data_url = data.get('audio_data')
 
-    interview = Interview.query.get(uuid.UUID(session_id))
+    try:
+        interview = Interview.query.get(uuid.UUID(session_id))
+    except Exception:
+        interview = None
+
     if not interview or interview.user_id != current_user.id:
         return jsonify({'error': 'Interview session not found or unauthorized.'}), 404
 
@@ -115,7 +130,9 @@ def submit_answer(current_user):
         return jsonify({'error': 'Interview has no active question.'}), 400
 
     if audio_data_url:
-        answer_text = services.transcribe_audio_data(audio_data_url)
+        transcript = services.transcribe_audio_data(audio_data_url)
+        if transcript:
+            answer_text = transcript
 
     # simple speaking metrics (fast win)
     wpm, fillers = services.quick_speaking_metrics(answer_text or "")
@@ -128,10 +145,13 @@ def submit_answer(current_user):
 
     # live feedback + pronunciation
     live_feedback = services.get_live_feedback(interview, answer_text)
-    pronunciation_tips = services.analyze_pronunciation(answer_text)
+    pronunciation_tips = services.analyze_pronunciation(answer_text or "")
 
-    total_turns = services.INTERVIEW_PHASES["conversation"]["questions"](interview.user_data.get("experience"))
+    # ---- CHANGED (guard user_data) ----
+    user_exp = (interview.user_data or {}).get("experience")
+    total_turns = services.INTERVIEW_PHASES["conversation"]["questions"](user_exp)
     current_turn_no = last_turn.turn_no
+    # -----------------------------------
 
     if current_turn_no >= total_turns:
         interview.status = 'completed'
@@ -140,7 +160,7 @@ def submit_answer(current_user):
             'interview_complete': True,
             'feedback': live_feedback,
             'pronunciation_tips': pronunciation_tips
-        })
+        }), 200
 
     next_question, topic = services.get_next_turn(interview)
 
@@ -160,14 +180,18 @@ def submit_answer(current_user):
         'feedback': live_feedback,
         'pronunciation_tips': pronunciation_tips,
         'interview_complete': False
-    })
+    }), 200
 
 @interviews_bp.route('/skip-question', methods=['POST'])
 @token_required
 def skip_question(current_user):
     data = request.get_json() or {}
     session_id = data.get('session_id')
-    interview = Interview.query.get(uuid.UUID(session_id))
+
+    try:
+        interview = Interview.query.get(uuid.UUID(session_id))
+    except Exception:
+        interview = None
 
     if not interview or interview.user_id != current_user.id:
         return jsonify({'error': 'Interview session not found or unauthorized.'}), 404
@@ -179,13 +203,16 @@ def skip_question(current_user):
     last_turn.answer = "(Question Skipped)"
     db.session.commit()
 
-    total_turns = services.INTERVIEW_PHASES["conversation"]["questions"](interview.user_data.get("experience"))
+    # ---- CHANGED (guard user_data) ----
+    user_exp = (interview.user_data or {}).get("experience")
+    total_turns = services.INTERVIEW_PHASES["conversation"]["questions"](user_exp)
     current_turn_no = last_turn.turn_no
+    # -----------------------------------
 
     if current_turn_no >= total_turns:
         interview.status = 'completed'
         db.session.commit()
-        return jsonify({'interview_complete': True})
+        return jsonify({'interview_complete': True}), 200
 
     next_question, topic = services.get_next_turn(interview, force_rephrase=True)
     new_turn = InterviewTurn(
@@ -201,14 +228,18 @@ def skip_question(current_user):
         'question': next_question,
         'question_counter': current_turn_no + 1,
         'interview_complete': False
-    })
+    }), 200
 
 @interviews_bp.route('/cancel-interview', methods=['POST'])
 @token_required
 def cancel_interview(current_user):
     data = request.get_json() or {}
     session_id = data.get('session_id')
-    interview = Interview.query.get(uuid.UUID(session_id))
+
+    try:
+        interview = Interview.query.get(uuid.UUID(session_id))
+    except Exception:
+        interview = None
 
     if not interview or interview.user_id != current_user.id:
         return jsonify({'error': 'Interview session not found or unauthorized.'}), 404
@@ -235,7 +266,11 @@ def get_feedback(current_user):
     data = request.get_json() or {}
     session_id = data.get('session_id')
 
-    interview = Interview.query.get(uuid.UUID(session_id))
+    try:
+        interview = Interview.query.get(uuid.UUID(session_id))
+    except Exception:
+        interview = None
+
     if not interview or interview.user_id != current_user.id:
         return jsonify({'error': 'Interview session not found or unauthorized.'}), 404
 
@@ -249,18 +284,23 @@ def get_feedback(current_user):
     return jsonify({
         'detailed_feedback': interview.detailed_feedback,
         'overall_score': interview.overall_score
-    })
+    }), 200
 
 @interviews_bp.route('/history', methods=['GET'])
 @token_required
 def get_history(current_user):
-    interviews = Interview.query.filter_by(user_id=current_user.id)\
-                                .filter(Interview.status == 'completed')\
-                                .order_by(Interview.created_at.desc()).all()
+    interviews = (Interview.query
+                  .filter_by(user_id=current_user.id)
+                  .filter(Interview.status == 'completed')
+                  .order_by(Interview.created_at.desc())
+                  .all())
 
     history_data = []
     for interview in interviews:
-        turns = InterviewTurn.query.filter_by(interview_id=interview.id).order_by(InterviewTurn.turn_no.asc()).all()
+        turns = (InterviewTurn.query
+                 .filter_by(interview_id=interview.id)
+                 .order_by(InterviewTurn.turn_no.asc())
+                 .all())
         history_data.append({
             'id': str(interview.id),
             'created_at': interview.created_at.isoformat(),
@@ -268,8 +308,75 @@ def get_history(current_user):
             'mode': interview.mode,
             'overall_score': interview.overall_score,
             'turns': [{
-                'turn_no': t.turn_no, 'q': t.question, 'a': t.answer, 'topic': t.topic,
-                'wpm': t.wpm, 'filler_count': t.filler_count, 'score': t.score
+                'turn_no': t.turn_no,
+                'q': t.question,
+                'a': t.answer,
+                'topic': t.topic,
+                'wpm': t.wpm,
+                'filler_count': t.filler_count,
+                'score': t.score
             } for t in turns]
         })
     return jsonify(history_data), 200
+
+@interviews_bp.route('/detail', methods=['GET'])
+@token_required
+def get_detail(current_user):
+    """
+    Returns the full transcript and 'pro suggestions' for a given interview.
+    Gated: only for interviews that consumed a PAID credit.
+    Query: /api/interviews/detail?session_id=<uuid>
+    """
+    from ..models import InterviewTurn
+    import uuid as _uuid
+
+    session_id = request.args.get('session_id')
+    if not session_id:
+        return jsonify({'error': 'session_id is required'}), 400
+
+    try:
+        interview = Interview.query.get(_uuid.UUID(session_id))
+    except Exception:
+        interview = None
+
+    if not interview or interview.user_id != current_user.id:
+        return jsonify({'error': 'Interview session not found or unauthorized.'}), 404
+
+    # Paywall: only interviews that used a paid credit can view transcript + suggestions
+    if interview.credit_type_used != 'paid':
+        return jsonify({
+            'error': 'This feature is available for paid sessions only.',
+            'reason': 'paywall',
+            'cta': {
+                'title': 'Unlock Transcript & Pro Suggestions',
+                'desc': 'See the full Q&A, get drills, follow-ups, and a mini learning plan.',
+                'action': 'upgrade'
+            }
+        }), 402
+
+    turns = (InterviewTurn.query
+             .filter_by(interview_id=interview.id)
+             .order_by(InterviewTurn.turn_no.asc())
+             .all())
+
+    transcript = [{
+        'turn_no': t.turn_no,
+        'question': t.question,
+        'answer': t.answer,
+        'topic': t.topic,
+        'wpm': t.wpm,
+        'filler_count': t.filler_count,
+        'score': t.score
+    } for t in turns]
+
+    suggestions = services.generate_post_session_suggestions(interview, transcript)
+
+    return jsonify({
+        'id': str(interview.id),
+        'created_at': interview.created_at.isoformat(),
+        'mode': interview.mode,
+        'overall_score': interview.overall_score,
+        'user_data': interview.user_data,
+        'transcript': transcript,
+        'suggestions': suggestions
+    }), 200

@@ -1,231 +1,161 @@
-// frontend/src/pages/DashboardPage.js
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Rocket, CreditCard, User, CalendarDays, Trophy, Star, History } from 'lucide-react';
 import api from '../api';
+import { Page, Container } from '../components/Page';
+import GlassCard from '../components/GlassCard';
+import HeaderBar from '../components/HeaderBar';
+import { EmeraldButton } from '../components/Buttons';
 
-function DashboardPage() {
+function Stat({ icon: Icon, label, value, hint, gradient }) {
+  return (
+    <motion.div
+      className={`rounded-2xl p-5 border border-white/10 bg-gradient-to-br ${gradient} backdrop-blur`}
+      whileHover={{ y: -3, scale: 1.01 }}
+      transition={{ type: 'spring', stiffness: 180, damping: 16 }}
+    >
+      <div className="flex items-center gap-3">
+        <div className="p-2.5 bg-black/20 rounded-xl">
+          <Icon className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <div className="text-sm text-white/70">{label}</div>
+          <div className="text-2xl font-bold">{value}</div>
+        </div>
+      </div>
+      {hint && <div className="mt-3 text-xs text-white/70">{hint}</div>}
+    </motion.div>
+  );
+}
+
+export default function DashboardPage() {
   const { user, logout } = useAuth();
   const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  const free = user?.free_interviews_remaining ?? user?.free_interviews ?? 0;
+  const paid = user?.paid_interviews_remaining ?? user?.paid_interviews ?? 0;
+  const total = free + paid;
 
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const response = await api.get('/interviews/history');
-        setHistory(response.data);
-      } catch (error) {
-        console.error("Failed to fetch interview history:", error);
+        const { data } = await api.get('/interviews/history');
+        setHistory(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
       }
     };
-    if (user) { // Only fetch history if the user is logged in
-      fetchHistory();
-    }
+    if (user) fetchHistory();
   }, [user]);
 
-  const styles = {
-    container: { 
-      padding: '2rem', 
-      backgroundColor: '#f0f4f8', 
-      color: '#333', 
-      minHeight: '100vh',
-      fontFamily: '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-    },
-    header: { 
-      display: 'flex', 
-      justifyContent: 'space-between', 
-      alignItems: 'center',
-      marginBottom: '2rem',
-      borderBottom: '1px solid #e1e4e8',
-      paddingBottom: '1rem'
-    },
-    welcomeText: {
-      fontSize: '1.8rem',
-      fontWeight: '600',
-      color: '#2c3e50'
-    },
-    button: { 
-      padding: '0.5rem 1rem', 
-      borderRadius: '4px', 
-      border: 'none', 
-      cursor: 'pointer',
-      transition: 'all 0.2s ease',
-      fontSize: '0.9rem',
-      fontWeight: '500'
-    },
-    logoutBtn: { 
-      backgroundColor: '#e74c3c', 
-      color: 'white',
-    },
-    credits: { 
-      backgroundColor: 'white', 
-      padding: '1.5rem', 
-      borderRadius: '8px', 
-      margin: '2rem 0',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-      border: '1px solid #e1e4e8'
-    },
-    creditsHeader: {
-      color: '#2c3e50',
-      marginTop: 0,
-      borderBottom: '1px solid #e1e4e8',
-      paddingBottom: '0.5rem'
-    },
-    creditInfo: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      padding: '0.5rem 0'
-    },
-    creditLabel: {
-      fontWeight: '500'
-    },
-    creditValue: {
-      fontWeight: '600',
-      color: '#3498db'
-    },
-    actions: { 
-      display: 'flex', 
-      gap: '1rem', 
-      marginTop: '1.5rem',
-      flexWrap: 'wrap'
-    },
-    interviewBtn: { 
-      backgroundColor: '#27ae60', 
-      color: 'white', 
-      fontSize: '1.1rem', 
-      padding: '0.75rem 1.5rem',
-    },
-    buyBtn: { 
-      backgroundColor: '#3498db', 
-      color: 'white',
-    },
-    historySection: {
-      backgroundColor: 'white',
-      padding: '1.5rem',
-      borderRadius: '8px',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-      border: '1px solid #e1e4e8'
-    },
-    historyHeader: {
-      color: '#2c3e50',
-      marginTop: 0,
-      borderBottom: '1px solid #e1e4e8',
-      paddingBottom: '0.5rem'
-    },
-    historyTable: { 
-      width: '100%', 
-      marginTop: '1rem', 
-      borderCollapse: 'collapse' 
-    },
-    th: { 
-      borderBottom: '1px solid #e1e4e8', 
-      padding: '0.75rem', 
-      textAlign: 'left',
-      color: '#7f8c8d'
-    },
-    td: { 
-      borderBottom: '1px solid #e1e4e8', 
-      padding: '0.75rem' 
-    },
-    scoreCell: {
-      fontWeight: '600',
-      color: score => score >= 7 ? '#27ae60' : score >= 5 ? '#f39c12' : '#e74c3c'
-    },
-    emptyHistory: {
-      textAlign: 'center',
-      padding: '2rem',
-      color: '#7f8c8d',
-      fontStyle: 'italic'
-    }
-  };
+  const bestScore = useMemo(() => (history.length ? Math.max(...history.map(h => h.overall_score || 0)) : 0), [history]);
+  const avgScore = useMemo(() => {
+    const scores = history.map(h => h.overall_score).filter(Boolean);
+    return scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+  }, [history]);
+
+  const scoreTone = (s) => (s >= 8.5 ? 'text-emerald-300' : s >= 7 ? 'text-amber-300' : s >= 5 ? 'text-orange-300' : 'text-rose-300');
 
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <h1 style={styles.welcomeText}>
-          Welcome, {user?.name || user?.email}
-        </h1>
-        <button 
-          onClick={logout} 
-          style={{...styles.button, ...styles.logoutBtn}}
-        >
-          Logout
-        </button>
-      </header>
-  
-      <div style={styles.credits}>
-        <h3 style={styles.creditsHeader}>Your Interview Credits</h3>
-        <div style={styles.creditInfo}>
-          <span style={styles.creditLabel}>Free Interviews:</span>
-          <span style={styles.creditValue}>{user?.free_interviews_remaining || user?.free_interviews || 0}</span>
-        </div>
-        <div style={styles.creditInfo}>
-          <span style={styles.creditLabel}>Paid Interviews:</span>
-          <span style={styles.creditValue}>{user?.paid_interviews_remaining || user?.paid_interviews || 0}</span>
-        </div>
-        <div style={styles.actions}>
-          <button 
-            onClick={() => navigate('/interview')} 
-            style={{...styles.button, ...styles.interviewBtn}}
-          >
-            🚀 Start New Interview
-          </button>
-          
-          <button 
-            onClick={() => navigate('/profile')} 
-            style={{...styles.button, backgroundColor: '#f39c12', color: 'white'}}
-          >
-            👤 My Profile
-          </button>
+    <Page>
+      <Container>
+        <HeaderBar
+          title={`Welcome, ${user?.name || user?.email}`}
+          subtitle="Level up your interviews with targeted practice & instant feedback."
+          onLogout={logout}
+        />
 
-          <button 
-            onClick={() => navigate('/pricing')} 
-            style={{...styles.button, ...styles.buyBtn}}
-          >
-            💳 Buy More Credits
-          </button>
+        {/* Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <Stat icon={CreditCard} label="Total Credits" value={total} hint={`${free} free • ${paid} paid`} gradient="from-[#3b82f6]/25 to-[#8b5cf6]/25" />
+          <Stat icon={CalendarDays} label="Sessions Completed" value={history.length} hint="Practice makes perfect" gradient="from-[#10b981]/25 to-[#22d3ee]/25" />
+          <Stat icon={Trophy} label="Best Score" value={`${bestScore ? bestScore.toFixed(1) : '—'}/10`} hint="Personal record" gradient="from-[#f59e0b]/25 to-[#ef4444]/25" />
+          <Stat icon={Star} label="Avg Score" value={`${avgScore ? avgScore.toFixed(1) : '—'}/10`} hint="Last 30 days" gradient="from-[#f472b6]/25 to-[#22c55e]/25" />
         </div>
-      </div>
-      
-      <div style={styles.historySection}>
-        <h2 style={styles.historyHeader}>Interview History</h2>
-        {history.length > 0 ? (
-          <table style={styles.historyTable}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Date</th>
-                <th style={styles.th}>Role</th>
-                <th style={styles.th}>Mode</th>
-                <th style={styles.th}>Score</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map(item => (
-                <tr key={item.id}>
-                  <td style={styles.td}>{new Date(item.created_at).toLocaleDateString()}</td>
-                  <td style={styles.td}>{item.user_data?.role || 'N/A'}</td>
-                  <td style={styles.td}>{item.mode || 'Standard'}</td>
-                  
-                  {/* --- START OF FIX --- */}
-                  <td style={{
-                    ...styles.td, // Apply base td styles
-                    fontWeight: styles.scoreCell.fontWeight, // Apply bold font weight
-                    color: styles.scoreCell.color(item.overall_score || 0) // Call the inner color function
-                  }}>
-                  {/* --- END OF FIX --- */}
-                    {item.overall_score ? `${item.overall_score.toFixed(1)} / 10` : 'N/A'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p style={styles.emptyHistory}>You have no interview history yet. Start your first interview!</p>
-        )}
-      </div>
-    </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+          <GlassCard className="p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2.5 bg-black/20 rounded-xl"><Rocket className="w-5 h-5" /></div>
+              <div className="font-semibold">Start New Interview</div>
+            </div>
+            <div className="text-sm text-white/70 mb-4">Practice with AI interviewer tailored to your role & experience.</div>
+            <EmeraldButton onClick={() => navigate('/interview')}>Start Interview</EmeraldButton>
+          </GlassCard>
+
+          <GlassCard className="p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2.5 bg-black/20 rounded-xl"><User className="w-5 h-5" /></div>
+              <div className="font-semibold">My Profile</div>
+            </div>
+            <div className="text-sm text-white/70 mb-4">Keep your target role & resume updated for spot-on questions.</div>
+            <EmeraldButton onClick={() => navigate('/profile')}>Open Profile</EmeraldButton>
+          </GlassCard>
+
+          <GlassCard className="p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2.5 bg-black/20 rounded-xl"><CreditCard className="w-5 h-5" /></div>
+              <div className="font-semibold">Buy Credits</div>
+            </div>
+            <div className="text-sm text-white/70 mb-4">Top up paid interviews. Secure checkout via Razorpay.</div>
+            <EmeraldButton onClick={() => navigate('/pricing')}>Buy Credits</EmeraldButton>
+          </GlassCard>
+        </div>
+
+        {/* History */}
+        <GlassCard className="overflow-hidden">
+          <div className="flex items-center gap-2 p-5 border-b border-white/10">
+            <History className="w-5 h-5 text-white/80" />
+            <h2 className="text-lg font-semibold">Interview History</h2>
+          </div>
+
+          {loading ? (
+            <div className="p-8 text-center text-white/70">Loading your sessions…</div>
+          ) : history.length ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="text-white/70">
+                  <tr className="text-left">
+                    <th className="px-5 py-3 border-b border-white/10">Date</th>
+                    <th className="px-5 py-3 border-b border-white/10">Role</th>
+                    <th className="px-5 py-3 border-b border-white/10">Mode</th>
+                    <th className="px-5 py-3 border-b border-white/10">Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-white/5 transition cursor-pointer"
+                      onClick={() => navigate(`/history/${item.id}`)}
+                    >
+                      <td className="px-5 py-3 border-b border-white/10">{new Date(item.created_at).toLocaleString()}</td>
+                      <td className="px-5 py-3 border-b border-white/10">{item.user_data?.role || 'N/A'}</td>
+                      <td className="px-5 py-3 border-b border-white/10">{item.mode || 'Standard'}</td>
+                      <td className={`px-5 py-3 border-b border-white/10 font-semibold ${scoreTone(item.overall_score || 0)}`}>
+                        {item.overall_score ? `${item.overall_score.toFixed(1)} / 10` : 'N/A'}
+                      </td>
+                    </tr>
+
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-10 text-center">
+              <div className="text-white/70 mb-3">No sessions yet.</div>
+              <EmeraldButton onClick={() => navigate('/interview')}>Start your first interview 🚀</EmeraldButton>
+            </div>
+          )}
+        </GlassCard>
+      </Container>
+    </Page>
   );
 }
-
-export default DashboardPage;

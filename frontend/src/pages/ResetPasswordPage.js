@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Shield, ArrowLeft } from 'lucide-react';
 import api from '../api';
+import { Page, Container } from '../components/Page';
+import GlassCard from '../components/GlassCard';
+import { PrimaryButton } from '../components/Buttons';
+import { Field, TextInput } from '../components/Fields';
 
-function ResetPasswordPage() {
+export default function ResetPasswordPage() {
   const { token } = useParams();
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
@@ -11,27 +16,16 @@ function ResetPasswordPage() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    setError('');
-    setMessage('');
-    
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long.');
-      return;
-    }
-    
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
-    
+    setError(''); setMessage('');
+    if (password.length < 6) return setError('Password must be at least 6 characters long.');
+    if (password !== confirmPassword) return setError('Passwords do not match.');
     setIsSubmitting(true);
-    
     try {
-      const response = await api.post('/auth/reset-password', { token, password });
-      setMessage(response.data.message);
-      setTimeout(() => navigate('/login'), 3000);
+      const res = await api.post('/auth/reset-password', { token, password });
+      setMessage(res.data.message);
+      setTimeout(() => navigate('/login'), 1800);
     } catch (err) {
       setError(err.response?.data?.error || 'An error occurred. Please try again.');
     } finally {
@@ -39,60 +33,39 @@ function ResetPasswordPage() {
     }
   };
 
-  const styles = {
-    container: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#1a202c', color: 'white', fontFamily: 'sans-serif' },
-    form: { display: 'flex', flexDirection: 'column', gap: '1rem', width: '300px', padding: '2rem', backgroundColor: '#2d3748', borderRadius: '8px' },
-    input: { padding: '0.5rem', borderRadius: '4px', border: 'none', backgroundColor: '#4a5568', color: 'white' },
-    button: { padding: '0.75rem', borderRadius: '4px', border: 'none', backgroundColor: '#3182ce', color: 'white', cursor: 'pointer', fontWeight: 'bold', opacity: isSubmitting ? 0.7 : 1 },
-    error: { color: '#e53e3e', marginTop: '1rem', textAlign: 'center' },
-    success: { color: '#38a169', marginTop: '1rem', textAlign: 'center' },
-    linkContainer: { marginTop: '1rem' },
-    link: { color: '#63b3ed' }
-  };
-
   return (
-    <div style={styles.container}>
-      <h2>Reset Password</h2>
-      {message ? (
-        <div style={{...styles.form, alignItems: 'center'}}>
-          <p style={styles.success}>{message}</p>
-          <p>Redirecting to login page...</p>
-        </div>
-      ) : (
-        <>
-          <form onSubmit={handleSubmit} style={styles.form}>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="New Password"
-              required
-              style={styles.input}
-            />
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm New Password"
-              required
-              style={styles.input}
-            />
-            <button 
-              type="submit" 
-              style={styles.button} 
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Resetting...' : 'Reset Password'}
-            </button>
-          </form>
-          {error && <p style={styles.error}>{error}</p>}
-        </>
-      )}
-      <div style={styles.linkContainer}>
-        <Link to="/login" style={styles.link}>Back to Login</Link>
-      </div>
-    </div>
+    <Page>
+      <Container className="flex items-center justify-center">
+        <GlassCard className="w-full max-w-md p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-black/20 rounded-xl"><Shield className="w-5 h-5" /></div>
+            <h2 className="text-xl font-bold">Reset Password</h2>
+          </div>
+
+          {!message ? (
+            <form onSubmit={submit} className="space-y-4">
+              <Field label="New Password">
+                <TextInput type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="New password" required />
+              </Field>
+              <Field label="Confirm New Password">
+                <TextInput type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm password" required />
+              </Field>
+              <PrimaryButton type="submit" disabled={isSubmitting} className="w-full">
+                {isSubmitting ? 'Resetting…' : 'Reset Password'}
+              </PrimaryButton>
+              {error && <div className="text-rose-300 text-sm">{error}</div>}
+            </form>
+          ) : (
+            <div className="text-center space-y-3">
+              <div className="text-emerald-300">{message}</div>
+              <div className="text-white/70 text-sm">Redirecting to login…</div>
+              <Link to="/login" className="inline-flex items-center gap-2 text-sky-300 hover:underline mt-2">
+                <ArrowLeft className="w-4 h-4" /> Back to Login
+              </Link>
+            </div>
+          )}
+        </GlassCard>
+      </Container>
+    </Page>
   );
 }
-
-export default ResetPasswordPage;

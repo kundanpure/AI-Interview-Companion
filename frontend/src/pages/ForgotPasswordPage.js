@@ -1,8 +1,14 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Mail, ArrowLeft } from 'lucide-react';
 import api from '../api';
+import { Page, Container } from '../components/Page';
+import GlassCard from '../components/GlassCard';
+import { PrimaryButton } from '../components/Buttons';
+import { Field, TextInput } from '../components/Fields';
 
-function ForgotPasswordPage() {
+
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -10,13 +16,11 @@ function ForgotPasswordPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setMessage('');
+    setError(''); setMessage('');
     setIsSubmitting(true);
-    
     try {
-      const response = await api.post('/auth/forgot-password', { email });
-      setMessage(response.data.message);
+      const res = await api.post('/auth/forgot-password', { email });
+      setMessage(res.data.message);
     } catch (err) {
       setError(err.response?.data?.error || 'An error occurred. Please try again.');
     } finally {
@@ -24,55 +28,44 @@ function ForgotPasswordPage() {
     }
   };
 
-  const styles = {
-    container: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#1a202c', color: 'white', fontFamily: 'sans-serif' },
-    form: { display: 'flex', flexDirection: 'column', gap: '1rem', width: '300px', padding: '2rem', backgroundColor: '#2d3748', borderRadius: '8px' },
-    input: { padding: '0.5rem', borderRadius: '4px', border: 'none', backgroundColor: '#4a5568', color: 'white' },
-    button: { padding: '0.75rem', borderRadius: '4px', border: 'none', backgroundColor: '#3182ce', color: 'white', cursor: 'pointer', fontWeight: 'bold', opacity: isSubmitting ? 0.7 : 1 },
-    error: { color: '#e53e3e', marginTop: '1rem', textAlign: 'center' },
-    success: { color: '#38a169', marginTop: '1rem', textAlign: 'center' },
-    linkContainer: { marginTop: '1rem' },
-    link: { color: '#63b3ed' }
-  };
-
   return (
-    <div style={styles.container}>
-      <h2>Forgot Password</h2>
-      {message ? (
-        <div style={{...styles.form, alignItems: 'center'}}>
-          <p style={styles.success}>{message}</p>
-          <Link to="/login" style={{...styles.button, textDecoration: 'none', textAlign: 'center'}}>
-            Return to Login
-          </Link>
-        </div>
-      ) : (
-        <>
-          <form onSubmit={handleSubmit} style={styles.form}>
-            <p>Enter your email address and we'll send you a link to reset your password.</p>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              required
-              style={styles.input}
-            />
-            <button 
-              type="submit" 
-              style={styles.button} 
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Sending...' : 'Send Reset Link'}
-            </button>
-          </form>
-          {error && <p style={styles.error}>{error}</p>}
-        </>
-      )}
-      <div style={styles.linkContainer}>
-        <Link to="/login" style={styles.link}>Back to Login</Link>
-      </div>
-    </div>
+    <Page>
+      <Container className="flex items-center justify-center">
+        <GlassCard className="w-full max-w-md p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-black/20 rounded-xl"><Mail className="w-5 h-5" /></div>
+            <h2 className="text-xl font-bold">Forgot Password</h2>
+          </div>
+
+          {!message ? (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <p className="text-sm text-white/70">
+                Enter your email address and we'll send you a link to reset your password.
+              </p>
+              <Field label="Email">
+                <TextInput
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </Field>
+              <PrimaryButton type="submit" disabled={isSubmitting} className="w-full">
+                {isSubmitting ? 'Sending…' : 'Send Reset Link'}
+              </PrimaryButton>
+              {error && <div className="text-rose-300 text-sm">{error}</div>}
+            </form>
+          ) : (
+            <div className="text-center space-y-3">
+              <div className="text-emerald-300">{message}</div>
+              <Link to="/login" className="inline-flex items-center gap-2 text-sky-300 hover:underline">
+                <ArrowLeft className="w-4 h-4" /> Return to Login
+              </Link>
+            </div>
+          )}
+        </GlassCard>
+      </Container>
+    </Page>
   );
 }
-
-export default ForgotPasswordPage;

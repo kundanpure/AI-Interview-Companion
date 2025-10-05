@@ -1,52 +1,55 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { BadgeCheck, AlertTriangle, ArrowRight } from 'lucide-react';
 import api from '../api';
+import { Page, Container } from '../components/Page';
+import GlassCard from '../components/GlassCard';
+import { PrimaryButton } from '../components/Buttons';
 
-function VerificationPage() {
-    const { token } = useParams();
-    const [message, setMessage] = useState('Verifying your account, please wait...');
-    const [error, setError] = useState(false);
+export default function VerificationPage() {
+  const { token } = useParams();
+  const [message, setMessage] = useState('Verifying your account, please wait...');
+  const [error, setError] = useState(false);
 
-    useEffect(() => {
-        const verifyEmailToken = async () => {
-            if (!token) {
-                setMessage('Verification token is missing. The link may be broken.');
-                setError(true);
-                return;
-            }
-            try {
-                // Call the backend endpoint to verify the token
-                const response = await api.get(`/auth/verify-email/${token}`);
-                setMessage(response.data.message);
-                setError(false);
-            } catch (err) {
-                setMessage(err.response?.data?.error || 'Verification failed. The link may have expired or is invalid.');
-                setError(true);
-            }
-        };
-        verifyEmailToken();
-    }, [token]);
-    
-    const styles = {
-        container: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#1a202c', color: 'white', fontFamily: 'sans-serif', padding: '2rem' },
-        card: { backgroundColor: '#2d3748', padding: '2rem 3rem', borderRadius: '8px', textAlign: 'center' },
-        message: { fontSize: '1.2rem', color: error ? '#e53e3e' : '#38a169' },
-        link: { color: '#63b3ed', marginTop: '1.5rem', display: 'inline-block', textDecoration: 'none', fontWeight: 'bold' }
+  useEffect(() => {
+    const verify = async () => {
+      if (!token) {
+        setMessage('Verification token is missing. The link may be broken.');
+        setError(true);
+        return;
+      }
+      try {
+        const res = await api.get(`/auth/verify-email/${token}`);
+        setMessage(res.data.message);
+        setError(false);
+      } catch (err) {
+        setMessage(err.response?.data?.error || 'Verification failed. The link may have expired or is invalid.');
+        setError(true);
+      }
     };
+    verify();
+  }, [token]);
 
-    return (
-        <div style={styles.container}>
-            <div style={styles.card}>
-                <h2>Email Verification</h2>
-                <p style={styles.message}>{message}</p>
-                {!error && (
-                    <Link to="/login" style={styles.link}>
-                        Proceed to Login
-                    </Link>
-                )}
+  return (
+    <Page>
+      <Container className="flex items-center justify-center">
+        <GlassCard className="w-full max-w-lg p-6 text-center">
+          <div className="flex justify-center mb-4">
+            <div className={`p-3 rounded-2xl ${error ? 'bg-rose-500/20' : 'bg-emerald-500/20'}`}>
+              {error ? <AlertTriangle className="w-6 h-6 text-rose-300" /> : <BadgeCheck className="w-6 h-6 text-emerald-300" />}
             </div>
-        </div>
-    );
+          </div>
+          <h2 className="text-xl font-bold mb-2">Email Verification</h2>
+          <p className={error ? 'text-rose-300' : 'text-emerald-300'}>{message}</p>
+          {!error && (
+            <Link to="/login">
+              <PrimaryButton className="mt-5">
+                Proceed to Login <ArrowRight className="w-4 h-4" />
+              </PrimaryButton>
+            </Link>
+          )}
+        </GlassCard>
+      </Container>
+    </Page>
+  );
 }
-
-export default VerificationPage;

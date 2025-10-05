@@ -7,7 +7,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import AuthModal from './components/AuthModal';
-
+import HistoryDetailPage from './pages/HistoryDetailPage';
 // Existing pages
 import InterviewCoach from './InterviewCoach';
 import LoginPage from './pages/LoginPage';
@@ -47,6 +47,7 @@ function AppShell() {
         <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
         <Route path="/pricing" element={<PrivateRoute><PricingPage /></PrivateRoute>} />
         <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
+        <Route path="/history/:id" element={<PrivateRoute><HistoryDetailPage /></PrivateRoute>} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" />} />
