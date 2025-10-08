@@ -4,19 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-<<<<<<< HEAD
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "dev": "next dev"
-=======
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview"
->>>>>>> 2a7383685948dd970f829a4f97c1aa7de8477cd0
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -70,25 +62,6 @@
     "vaul": "^0.9.9",
     "zod": "^3.25.76"
   },
-<<<<<<< HEAD
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.14",
-    "autoprefixer": "^10.4.21",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.13"
-=======
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@tailwindcss/typography": "^0.5.16",
@@ -107,6 +80,5 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19"
->>>>>>> 2a7383685948dd970f829a4f97c1aa7de8477cd0
   }
 }
