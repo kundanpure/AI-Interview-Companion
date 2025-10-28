@@ -1,4 +1,3 @@
-# backend/app.py
 import os
 from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
@@ -26,9 +25,15 @@ def create_app(config_name: str = None):
     bcrypt.init_app(app)
     mail.init_app(app)
 
-    # CORS
+    # CORS - FIXED VERSION
     origins = app.config.get("CORS_ALLOW_ORIGINS", ["*"])
-    CORS(app, resources={r"/api/*": {"origins": origins}}, supports_credentials=True)
+    CORS(
+        app, 
+        resources={r"/api/*": {"origins": origins}},
+        supports_credentials=True,
+        allow_headers=["Content-Type", "Authorization"],
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    )
 
     # Blueprints
     with app.app_context():
